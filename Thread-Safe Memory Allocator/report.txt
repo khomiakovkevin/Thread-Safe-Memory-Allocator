@@ -1,0 +1,31 @@
++------+------+---------+-------+
+|      | SYS  |   HW7   |  PAR  |
++------+------+---------+-------+
+| IVEC | 4.48 |  111.11 |  9.99 |
+| LIST | 8.87 | 1874.00 | 27.22 |
++------+------+---------+-------+
+
+Test Hardware:
+Hardware: Macbook Pro Early 2015
+OS: Fedora 29
+RAM: 8GB
+CPU: Intel(R) Core(TM) i5-5257U CPU @ 2.70GHz
+CPU Cores: 4
+
+Discussion of your strategy:
+
+Our strategy followed along with the strategy discussed in class. We implemented a fixed-size list of bins for each thread, where the size of a chunk of memory in that bin is fixed to one of just 19 values (4, 8, 12, 16...). This allowed us to eliminate the overhead of header information that we liberally used in our homework 7 assignment. Instead, we knew that there was a fixed number of chunks of memory left in each allocated page that could be provided at whim.
+
+Each chunk maintains a single state, either free or used, and so what way is better to represent a binary state than binary itself. Each bin is responsible for a bitmap, where each bit of a 128 character long array (1024 bits total) represents the free or used state of a chunk of memory in that bin. We cut each bin off so that it can only use a fixed amount of that bitmap (the 4 byte bitmap got to use 974 bits and the 8 byte bitmap only cared for 487 bits--this was the amount of available space to us discluding the size of the header itself). This way we could easily look up if there was any free space in that bit (a bit, 0-indexed to the maximum number of chunks in that bin, is equal to 0) or if the bin is empty (all bits are 0).
+
+Allocations larger than a page size still received a bin, but the fields is_large and size_large were used to represent such a bin. This way, when our program was asked to free any memory, we could detect if we needed to work inside of a bin or just munmap the memory we were given.
+
+Reallocating was straightforward; most of the business logic was handled in allocation and freeing of the memory so this part was not very difficult.
+
+Since each thread was responsible for maintaining a local list of bins, we needed to provide functionality for memory to be freed from another thread. Hence, we needed to maintain a static list of “arenas”, or simply a linked list of thread IDs to their respective list of bins. This allowed us to look up and see which thread a bin belonged to, and if we should perform the operation on our local list or modify the list of a another thread.
+
+Discussion of your results:
+
+The results included were our average runtimes of the program using the specifications of the hardware listed above. In some cases, we were able to beat the system malloc (using par) but in most cases, we were slightly slower. Since the only way to look for a chunk of memory in the homework 7 solution was to iterate through of our list of free/used memory, the homework 7 solution was significantly slower (a complexity of O(n) where n is the number of free chunks is much less efficient than the O(16) == O(1) time it takes to find a free bit in each bin).
+
+The mutexes and bit lookups were the primary bottlenecks of our program, taking roughly 36% of the runtime. Given 30 years and a team of extremely talented engineers, these bottlenecks could certainly have been reduced. All sarcasm aside, we did have to make several compromises to ensure maximum efficiency, including using trylock in a few spaces that would just skip over certain logic if some other thread was working on the data in question.
