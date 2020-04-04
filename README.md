@@ -1,10 +1,7 @@
 # Thread-Safe-Memory-Allocator
 Implementation of a high-performance thread-safe allocator
 
-In this assignment, I have made a high-performance thread-safe allocator.
-
 Test Programs
-Provided with the assignment download are two test programs:
 
 ivec_main - Collatz Conjecture simulation with dynamic array
 list_main - Collatz Conjecture simulation with linked list
